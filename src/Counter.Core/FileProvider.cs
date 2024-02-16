@@ -23,13 +23,15 @@ namespace Counter.Core
 
             await using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous))
             {
-                using var streamReader = new StreamReader(fileStream);
-                var buffer = new char[bufferSize];
-                int bytesRead;
-
-                while ((bytesRead = await streamReader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                using (var streamReader = new StreamReader(fileStream))
                 {
-                    stringBuilder.Append(buffer, 0, bytesRead);
+                    var buffer = new char[bufferSize];
+                    int bytesRead;
+
+                    while ((bytesRead = await streamReader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        stringBuilder.Append(buffer, 0, bytesRead);
+                    }
                 }
             }
 
@@ -45,27 +47,32 @@ namespace Counter.Core
         ///<returns>An asynchronous enumerable of file content chunks as strings.</returns>
         public async IAsyncEnumerable<string> ReadFileChunksAsync(string filePath, int bufferSize = 4096, int bufferIterations = 1)
         {
-            await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous);
-            using var streamReader = new StreamReader(fileStream);
-            var stringBuilder = new StringBuilder();
-            var chunkCount = 0;
-            var buffer = new char[bufferSize];
-
-            int bytesRead;
-            while ((bytesRead = await streamReader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            await using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                             bufferSize, FileOptions.Asynchronous))
             {
-                stringBuilder.Append(buffer, 0, bytesRead);
-                chunkCount++;
+                using (var streamReader = new StreamReader(fileStream))
+                {
+                    var stringBuilder = new StringBuilder();
+                    var chunkCount = 0;
+                    var buffer = new char[bufferSize];
 
-                if (chunkCount != bufferIterations) continue;
+                    int bytesRead;
+                    while ((bytesRead = await streamReader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        stringBuilder.Append(buffer, 0, bytesRead);
+                        chunkCount++;
 
-                chunkCount = 0;
-                var result = stringBuilder.ToString();
-                stringBuilder.Clear();
-                yield return result;
+                        if (chunkCount != bufferIterations) continue;
+
+                        chunkCount = 0;
+                        var result = stringBuilder.ToString();
+                        stringBuilder.Clear();
+                        yield return result;
+                    }
+
+                    yield return stringBuilder.ToString();
+                }
             }
-
-            yield return stringBuilder.ToString();
         }
 
         ///<summary>
@@ -76,13 +83,17 @@ namespace Counter.Core
         public async IAsyncEnumerable<string> ReadFileLinesAsync(string filePath)
         {
             const int bufferSize = 4096;
-            await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous);
-            using var streamReader = new StreamReader(fileStream);
-            while (!streamReader.EndOfStream)
+            await using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous))
             {
-                var line = await streamReader.ReadLineAsync();
-                if (line != null)
-                    yield return line;
+                using (var streamReader = new StreamReader(fileStream))
+                {
+                    while (!streamReader.EndOfStream)
+                    {
+                        var line = await streamReader.ReadLineAsync();
+                        if (line != null)
+                            yield return line;
+                    }
+                }
             }
         }
 
@@ -94,20 +105,25 @@ namespace Counter.Core
         public async Task WriteFileAsync(string filePath, string content)
         {
             const int bufferSize = 4096;
-            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous);
-            await using var streamWriter = new StreamWriter(fileStream);
-            var index = 0;
-            var length = content.Length;
-
-            while (index < length)
+            await using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None,
+                             bufferSize, FileOptions.Asynchronous))
             {
-                var remaining = length - index;
-                var chunkSize = Math.Min(remaining, bufferSize);
+                await using (var streamWriter = new StreamWriter(fileStream))
+                {
+                    var index = 0;
+                    var length = content.Length;
 
-                var buffer = content.ToCharArray(index, chunkSize);
-                await streamWriter.WriteAsync(buffer, 0, buffer.Length);
+                    while (index < length)
+                    {
+                        var remaining = length - index;
+                        var chunkSize = Math.Min(remaining, bufferSize);
 
-                index += chunkSize;
+                        var buffer = content.ToCharArray(index, chunkSize);
+                        await streamWriter.WriteAsync(buffer, 0, buffer.Length);
+
+                        index += chunkSize;
+                    }
+                }
             }
         }
     }
