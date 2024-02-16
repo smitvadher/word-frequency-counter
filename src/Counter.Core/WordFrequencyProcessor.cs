@@ -54,7 +54,6 @@ namespace Counter.Core
 
             var sw = new Stopwatch();
             sw.Start();
-
             IDictionary<string, int> wordFrequencies = null;
 
             var previousRemainingWord = "";
@@ -64,6 +63,10 @@ namespace Counter.Core
             if (!string.IsNullOrEmpty(previousRemainingWord))
                 wordFrequencies = _wordCounter.CountWordFrequencies(previousRemainingWord, wordFrequencies);
 
+            sw.Stop();
+            Console.WriteLine($"Read+Process Time {sw.Elapsed}");
+            sw.Restart();
+
             if (wordFrequencies != null)
             {
                 var outputContent = GetOutputFileContent(wordFrequencies);
@@ -71,7 +74,7 @@ namespace Counter.Core
             }
 
             sw.Stop();
-            Console.WriteLine($"Time {sw.Elapsed}");
+            Console.WriteLine($"Output Write Time {sw.Elapsed}");
         }
 
         #endregion
